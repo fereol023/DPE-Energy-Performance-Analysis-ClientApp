@@ -6,7 +6,8 @@ ENV MPLCONFIGDIR=/app
 
 WORKDIR /app
 COPY requirements.txt .
-RUN python -m pip install --no-cache-dir -r requirements.txt
+RUN pip install uv
+RUN uv pip install --system --no-cache-dir -r requirements.txt
 
 COPY . .
 EXPOSE 8004
