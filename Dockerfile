@@ -1,4 +1,4 @@
-FROM python:3.12-alpine
+FROM python:3.9 
 
 ENV API_URL=""
 ENV API_TOKEN=""
@@ -6,8 +6,7 @@ ENV MPLCONFIGDIR=/app
 
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install uv
-RUN uv pip install --system --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 EXPOSE 8004
