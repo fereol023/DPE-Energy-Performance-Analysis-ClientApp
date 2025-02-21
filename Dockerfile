@@ -1,4 +1,4 @@
-FROM python:3.9-alpine
+FROM python:3.9.21-alpine
 
 ENV API_URL=""
 ENV API_TOKEN=""
