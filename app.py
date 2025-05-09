@@ -1,14 +1,16 @@
-import streamlit as st
-import pickle, requests, os
-import pandas as pd
+from content import *
+from content import page1, page2, page3
 
-st.title('Hello page')
+# st.set_option('deprecation.showPyplotGlobalUse', False)
+st.set_page_config(layout="wide")
 
-API_URL = os.getenv("API_URL", "http://localhost:8000/") # env variable
-API_PWD = os.getenv("API_TOKEN", "pwd") # env variable
+pages = {
+    "Page 1 - Input": page1.main,
+    "Page 2 - Dataviz": page2.main,
+    "Page 3 - Modélisation": page3.main
+}
 
-r = requests.get(API_URL, timeout=30).json()
-r = requests.get(f"{API_URL}/read/db/testcollection", timeout=30).json()
+st.sidebar.title('Navigation')
+p = st.sidebar.radio('Aller à ', list(pages.keys()))
 
-# st.text(r)
-st.table(pd.DataFrame(r.get('res', {}).get('data', {})))
+pages[p]()
