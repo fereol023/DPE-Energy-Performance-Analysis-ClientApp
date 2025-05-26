@@ -5,9 +5,9 @@ from content import page1, page2, page3
 st.set_page_config(layout="wide")
 
 pages = {
-    "Page 1 - Input": page1.main,
+    "Page 1 - Présentation": page1.main,
     "Page 2 - Dataviz": page2.main,
-    "Page 3 - Modélisation": page3.main
+    "Page 2 - Démo": page3.main
 }
 
 st.sidebar.title('Navigation')
