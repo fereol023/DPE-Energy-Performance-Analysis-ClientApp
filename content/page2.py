@@ -5,13 +5,13 @@ def main():
     
     st.title("EDA metrics and KPI")
 
-    r = requests.get(SERVER_HOST, timeout=60).json()
+    r = httpx.get(SERVER_HOST, timeout=60).json()
     # if st.button('Init db'):
-    r = requests.get(make_req("db/"), timeout=30).json()
+    r = httpx.get(make_req("db/"), timeout=30).json()
     
-    r = requests.get(make_req("/db/reader/")).json()
+    r = httpx.get(make_req("/db/reader/")).json()
 
-    r = requests.get(make_req("/db/reader/adresses/getall")).json()
+    r = httpx.get(make_req("/db/reader/adresses/getall")).json()
 
     
     # filters
@@ -57,7 +57,7 @@ def main():
 
     c11, c12, c13 = st.columns(3)
     c11.markdown("#### Nombre de logements par DPE")
-    r11 = requests.get(make_req("db/reader/adresses/getdpecount")).json()
+    r11 = httpx.get(make_req("db/reader/adresses/getdpecount")).json()
     # Create a bar plot for the number of logements by DPE
     dpe_data = pd.DataFrame(r11.get('data', []))
 
