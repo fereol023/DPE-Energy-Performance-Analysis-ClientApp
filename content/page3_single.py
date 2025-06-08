@@ -17,7 +17,7 @@ def get_kwh_price():
         return res.json()
     else:
         return {
-            "prix_kwh_base": 0.216,  # default backup value
+            "prix_kwh_base": 0.2,  # default backup value
             "source": "Backup value"
         }
 
@@ -27,7 +27,18 @@ def search_adress(inp_addr: str)->list:
     """
     Call API endpoint to get adresses closer to input adress.
     """
-    #make_req()
+    route = make_req(f"db/reader/adresses/searchadress/{inp_addr}")
+    logger.info(f"Calling route : {route}")
+    res = httpx.get(route)
+    if res.status_code == 200:
+        data = res.json()
+        if data.get('data'):
+            return data.get('data')
+        else:
+            return []
+    else:
+        logger.error(f"Failed to fetch adresses: {res.text}")
+        st.error("Failed to fetch adresses")
     return []
 
 
@@ -36,7 +47,22 @@ def search_avg_inputs_from_address(inp_addr: str)->dict:
     """
     Call API endpoint to get example of inputs values to set
     as default values in form - to prepare model input.
+    # TODO: for now, just take one example from the database
     """
+    route = make_req(f"db/reader/logements/getbyadress/{inp_addr}")
+    logger.info(f"Calling route : {route}")
+    res = httpx.get(route)
+    if res.status_code == 200:
+        data = res.json()
+        if data.get('data'):
+            # si plusieurs logements on prend juste le premier
+            return data.get('data') if isinstance(data.get('data'), dict) else data.get('data')[0]
+        else:
+            logger.warning("No data found for the given address.")
+            st.warning("No data found for the given address.")
+    else:
+        logger.error(f"Failed to fetch address data: {res.text}")
+        st.error("Failed to fetch address data")
     return {}
 
 
@@ -62,7 +88,10 @@ def get_dpe_label(dpe_value_idx):
     return mapping.get(dpe_value_idx, "NC")
 
 
-def make_form_from_config(model_features_config):
+def make_form_from_config(model_features_config, example_inputs={}):
+    """
+    Generate input form based on model features configuration.
+    """
     FLOAT_COLS, CATEG_COLS = [], []
     for feature, config in model_features_config.items():
         if 'float' in config.get('dtype'):
@@ -77,39 +106,47 @@ def make_form_from_config(model_features_config):
     _milieu = len(FLOAT_COLS)//2
     for feature in FLOAT_COLS[:_milieu]:
         # default is min+max//2
-        config = model_features_config.get(feature)
-        label = config.get('desc', '')
-        _default = float(config.get('def', 0))
+        feature_config = model_features_config.get(feature)
+        label = feature_config.get('desc', '')
+        _default = float(example_inputs.get(feature, None) or feature_config.get('def', 0))
         input_values[feature] = col11.slider(
             f"{label}",
-            min_value=float(config.get('min', 0)),
-            max_value=float(config.get('max', 100)),
+            min_value=float(feature_config.get('min', 0)),
+            max_value=float(feature_config.get('max', 100)),
             value=_default
         )
     for feature in FLOAT_COLS[_milieu:]:
         # default is min+max//2
-        config = model_features_config.get(feature)
-        label = config.get('desc', '')
-        _default = float(config.get('def', 0))
+        feature_config = model_features_config.get(feature)
+        label = feature_config.get('desc', '')
+        _default = float(example_inputs.get(feature, None) or feature_config.get('def', 0))
         input_values[feature] = col12.slider(
             f"{label}",
-            min_value=float(config.get('min', 0)),
-            max_value=float(config.get('max', 100)),
+            min_value=float(feature_config.get('min', 0)),
+            max_value=float(feature_config.get('max', 100)),
             value=_default
         )
         
     col21, col22 = st.columns(2)
     _milieu = len(CATEG_COLS)//2
     for feature in CATEG_COLS[:_milieu]:
-        config = model_features_config.get(feature)
-        label = config.get('desc', '')
-        v = col21.selectbox(f"{label}", options=config['mapping'], index=0)
-        input_values[feature] = config.get('mapping').get(v)
+        feature_config = model_features_config.get(feature)
+        label = feature_config.get('desc', '')
+        v = col21.selectbox(
+            f"{label}", 
+            options=feature_config['mapping'], 
+            index=feature_config['mapping'].get(example_inputs.get(feature, None), 0)
+            )
+        input_values[feature] = feature_config.get('mapping').get(v)
     for feature in CATEG_COLS[_milieu:]:
-        config = model_features_config.get(feature)
-        label = config.get('desc', '')
-        v = col22.selectbox(f"{label}", options=config['mapping'], index=0)
-        input_values[feature] = config.get('mapping').get(v)
+        feature_config = model_features_config.get(feature)
+        label = feature_config.get('desc', '')
+        v = col22.selectbox(
+            f"{label}", 
+            options=feature_config['mapping'], 
+            index=feature_config['mapping'].get(example_inputs.get(feature, None), 0)
+            )
+        input_values[feature] = feature_config.get('mapping').get(v)
 
     # update inputs
     st.session_state['inputs'] = input_values
@@ -233,7 +270,10 @@ def log_prediction_results(
 def main(obj_model, model_config, save_inputs=False):
 
     # _, c1, __ = st.columns([1, 2, 1])
-    inp_addr = st.text_input("Input address")
+    inp_addr = st.text_input(
+        "Input address",
+        # "rue lord byron cannes" 
+        )
     if inp_addr:
         results = search_adress(inp_addr)
 
@@ -243,13 +283,18 @@ def main(obj_model, model_config, save_inputs=False):
         choosed_address = st.selectbox(
             "Choisir adresse..", 
             results
-            )
+            ) or {}
+        
         st.session_state['inputs'] = search_avg_inputs_from_address(
-            choosed_address
+            choosed_address.get('adresse', 'abcde') # fetch on non existing town
             )
+        # st.write(st.session_state['inputs'])
         # display form
         st.markdown("----------------")
-        make_form_from_config(model_config)
+        make_form_from_config(
+            model_config, 
+            example_inputs=st.session_state.get('inputs', {})
+            )
         st.markdown("----------------")
         
         if st.button("Predict on this"):

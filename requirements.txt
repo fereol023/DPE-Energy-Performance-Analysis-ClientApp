@@ -1,6 +1,5 @@
-numpy
-pandas
-scipy
-seaborn
-streamlit
-scikit-learn
+httpx==0.28.1
+pandas==2.3.0
+Pillow==11.2.1
+plotly==6.0.1
+streamlit==1.44.1
