@@ -14,7 +14,7 @@ jobs:
     needs: call-github-new-tagging-workflow
     uses: fereol023/pipelines_templates/.github/workflows/github-docker-build-and-push.yml@main
     with:
-      TAG: ${{ needs.call-github-new-tagging-workflow.outputs.new_tag_created }}
+      GIT_TAG: ${{ needs.call-github-new-tagging-workflow.outputs.new_tag_created }}
     secrets:
       CR_USER: ${{ secrets.CR_USER }}
       CR_PWD: ${{ secrets.CR_PWD }}
