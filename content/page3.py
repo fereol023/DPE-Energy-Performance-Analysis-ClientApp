@@ -24,7 +24,7 @@ def load_model(default:bool, path=None, type=None):
 @st.cache_data
 def load_model_config(version="v0"):
     try:
-        _ = make_req("model/v0/config")
+        _ = make_req(f"model/{version}/config")
         logger.info(f"Calling route : {_}")
         model_config = httpx.get(_).json()
         logger.info("Config du modèle bien loadé !")
@@ -33,7 +33,7 @@ def load_model_config(version="v0"):
         logger.warning(f"Error loading model - {e}")
         return
 
-def main():
+def main(*args, **kwargs):
     # model loading
     obj_model, config_model = load_model(default=True), load_model_config()
     # consentemment
@@ -42,7 +42,7 @@ def main():
         )
 
     _, c1, __ = st.columns([1, 3, 1])
-    mode_choosed = c1.segmented_control(
+    mode_choosed = st.segmented_control(
         label="*Mode*",
         options=["une prédiction", "prédictions multiples"],
         selection_mode="single",
