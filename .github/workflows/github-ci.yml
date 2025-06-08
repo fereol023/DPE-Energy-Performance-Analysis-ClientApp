@@ -1,4 +1,4 @@
-name: ghaction-ci-volt-ai # run id, repos name, nom du workflow ci dessus, branch name
+name: ghaction-ci-volt-ai-app # run id, repos name, nom du workflow ci dessus, branch name
 run-name: CI${{ github.run_number }}-${{ github.event.repository.name }}-${{ github.workflow }}_${{ github.ref_name }}
 on: # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
