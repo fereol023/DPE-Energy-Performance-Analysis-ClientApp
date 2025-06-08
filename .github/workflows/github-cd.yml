@@ -1,0 +1,20 @@
+name: ghaction-cd-volt-ai-app
+run-name: CD${{ github.run_number }}-${{ github.event.repository.name }}-${{ github.workflow }}_${{ github.ref_name }}
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  call-github-new-tagging-workflow:
+    uses: fereol023/pipelines_templates/.github/workflows/github-git-create-new-tag.yml@main
+    secrets: # appelle et envoie le github pat de ce repos
+      github_personal_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    needs: call-github-new-tagging-workflow
+    uses: fereol023/pipelines_templates/.github/workflows/github-docker-build-and-push.yml@main
+    with:
+      TAG: ${{ needs.call-github-new-tagging-workflow.outputs.new_tag_created }}
+    secrets:
+      CR_USER: ${{ secrets.CR_USER }}
+      CR_PWD: ${{ secrets.CR_PWD }}

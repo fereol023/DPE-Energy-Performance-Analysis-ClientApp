@@ -4,9 +4,13 @@ __pycache__/
 *$py.class
 
 # data
-data/predlogs/
-.streamlit/
+data/
+**.streamlit/
 ressources/
+
+# DS_Store
+.DS_Store
+**/.DS_Store
 
 # C extensions
 *.so
