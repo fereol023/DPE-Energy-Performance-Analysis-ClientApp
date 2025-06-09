@@ -1,9 +1,12 @@
 name: ghaction-cd-volt-ai-app
 run-name: CD${{ github.run_number }}-${{ github.event.repository.name }}-${{ github.workflow }}_${{ github.ref_name }}
 on:
-  pull_request:
-    branches:
-      - main
+  # on fait ceci uniquement quand les tests sont ok 
+  # evite de déployer une nouvelle image à chaque ouverture de PR
+  # faut que 'final' soit dans le merge commit pour faire une nouvelle version mineure
+  # pull_request:
+  #   branches:
+  #     - main
   push:
     branches:
       - main
