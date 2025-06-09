@@ -2,7 +2,7 @@ import httpx
 import pandas as pd
 from PIL import Image 
 import streamlit as st
-import pickle, os, logging
+import pickle, os, logging, uuid
 
 if st.secrets["ENV"] == "LOCAL":
     SERVER_HOST = st.secrets["API_HOST"]
