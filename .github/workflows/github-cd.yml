@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - main
 jobs:
   call-github-new-tagging-workflow:
     uses: fereol023/pipelines_templates/.github/workflows/github-git-create-new-tag.yml@main
