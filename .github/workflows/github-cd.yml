@@ -1,0 +1,32 @@
+name: ghaction-cd-volt-ai-app
+run-name: CD${{ github.run_number }}-${{ github.event.repository.name }}-${{ github.workflow }}_${{ github.ref_name }}
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  call-github-new-tagging-workflow:
+    uses: fereol023/pipelines_templates/.github/workflows/github-git-create-new-tag.yml@main
+    secrets: # appelle et envoie le github pat de ce repos
+      github_personal_access_token: ${{ secrets.GITHUB_TOKEN }}
+  
+  fetch-new-tag:
+    needs: call-github-new-tagging-workflow
+    runs-on: ubuntu-latest
+    outputs:
+      new_tag: ${{ steps.set_tag.outputs.new_tag }}
+    steps:
+      - name: Fetch and store new_tag_created
+        id: set_tag
+        run: |
+          echo "New tag created: ${{ needs.call-github-new-tagging-workflow.outputs.new_tag_created }}"
+          echo "new_tag=${{ needs.call-github-new-tagging-workflow.outputs.new_tag_created }}" >> $GITHUB_OUTPUT
+
+  call-docker-build-and-push-workflow:
+    needs: fetch-new-tag
+    uses: fereol023/pipelines_templates/.github/workflows/github-docker-build-and-push.yml@main
+    with:
+      GIT_TAG: ${{ needs.fetch-new-tag.outputs.new_tag }}
+    secrets:
+      CR_USER: ${{ secrets.CR_USER }}
+      CR_PWD: ${{ secrets.CR_PWD }}
