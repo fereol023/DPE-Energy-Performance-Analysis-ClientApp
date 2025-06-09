@@ -32,7 +32,7 @@ def main():
     
     st.dataframe(pd.DataFrame(data=input_schema).T)
     os.makedirs("data/input_batch", exist_ok=True)
-    pd.DataFrame(data=input_schema).to_csv("data/input_batch.csv")
+    pd.DataFrame(data=input_schema).to_csv(f"data/input_batch/{str(uuid.uuid4())}.csv")
 
     uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])    
 
