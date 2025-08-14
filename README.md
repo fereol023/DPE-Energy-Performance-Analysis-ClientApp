@@ -28,20 +28,22 @@ Les informations de connexion avec un stockage type s3/minio distant ne sont pas
 - Installer les requirements avec `pip install -r requirements.txt`
 - Exécuter `streamlit run app.py`
 
-### ➡️ Utilisation avec le conteneur (recommandé)
+### ➡️ Utilisation avec le conteneur (docker compose recommandé)
 
-- Utilisez la commande docker run ou un docker compose :
+- Utilisez la commande docker run. Si le reste de la stack est déployée en local la commande suivante devrait être suufisante sinon, définir avec les urls en remote. 
+
 ```bash
 docker run -it \
     -p 8501:8501 \
-    -e SERVER_API_URL="https://host.port" \
-    -e S3_URL="https://minio.local:9000" \
-    -e S3_ACCESS_KEY="minio-access" \
-    -e S3_SECRET_KEY="minio-secret" \
+    -e SERVER_API_URL="http://host.docker.internal:<port>" \
+    -e S3_URL="host.docker.internal:<port>" \
+    -e S3_ACCESS_KEY="s3-access-key" \
+    -e S3_SECRET_KEY="s3-secret-key" \
     dpe-energy-performance-analysis-clientapp:<release_tag>
 ```
+- Utilisez docker compose ([ici](docker-compose.yml)) en redéfinissant dans le docker-compose.yml les variables d'environnement.
 
-- [Page docker hub de cette image](https://hub.docker.com/repository/docker/fereol023/dpe-energy-performance-analysis-clientapp/general)
+- Pour avoir le dernier release tag, consulter la page [dockerhub de ce repos](https://hub.docker.com/repository/docker/fereol023/dpe-energy-performance-analysis-clientapp/general)
 
 ### 📃 Documentation 
 
