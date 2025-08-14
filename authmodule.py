@@ -1,7 +1,9 @@
 import os
+import logging
 import requests
 import streamlit as st
 
+logger = logging.getLogger("VOLT-DPE-DATAVIZ-APP")
 try:
     if st.secrets["ENV"] == "LOCAL":
         API_BASE_URL = st.secrets["SERVER_API_URL"]
@@ -9,7 +11,8 @@ try:
     else:
         API_BASE_URL = os.getenv("SERVER_API_URL")
 except:
-        API_BASE_URL = st.secrets["SERVER_API_URL"]
+        logger.info("Using environment variables")
+        API_BASE_URL = os.getenv["SERVER_API_URL"]
 
 def check_is_connected():
     return 'access_token' in st.session_state 

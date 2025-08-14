@@ -1,11 +1,6 @@
 FROM python:3.12-alpine
 
-ENV MPLCONFIGDIR=/app \
-    SERVER_API_URL="" \
-    S3_URL="" \
-    S3_ACCESS_KEY="" \
-    S3_SECRET_KEY="" \
-    S3_BUCKET_NAME=""
+ENV MPLCONFIGDIR=/app
 
 WORKDIR /app
 COPY requirements.txt .
