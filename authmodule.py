@@ -4,12 +4,12 @@ import streamlit as st
 
 try:
     if st.secrets["ENV"] == "LOCAL":
-        API_BASE_URL = st.secrets["API_HOST"]
+        API_BASE_URL = st.secrets["SERVER_API_URL"]
         # SERVER_ACCESS_TOKEN = st.secrets["API_ACCESS_TOKEN"]
     else:
-        API_BASE_URL = os.getenv("API_HOST")
+        API_BASE_URL = os.getenv("SERVER_API_URL")
 except:
-        API_BASE_URL = st.secrets["API_HOST"]
+        API_BASE_URL = st.secrets["SERVER_API_URL"]
 
 def check_is_connected():
     return 'access_token' in st.session_state 

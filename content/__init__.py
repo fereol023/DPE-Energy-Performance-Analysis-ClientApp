@@ -6,7 +6,7 @@ import pickle, os, logging, uuid
 from PIL import Image 
 
 logging.basicConfig(
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger("VOLT-DPE-DATAVIZ-APP")
@@ -14,24 +14,24 @@ logger = logging.getLogger("VOLT-DPE-DATAVIZ-APP")
 
 try:
     if st.secrets["ENV"] == "LOCAL":
-        SERVER_URL = st.secrets["API_HOST"]
-        SERVER_ACCESS_KEY = st.secrets["API_ACCESS_KEY"]
-        SERVER_ACCESS_TOKEN = st.secrets["API_ACCESS_TOKEN"]
-        MODEL_PATH = st.secrets["MODEL_PATH"]
-        PRED_LOGS_FOLDER = st.secrets["PRED_LOGS_FOLDER"]
+        SERVER_URL = st.secrets["SERVER_API_URL", ""]
+        #SERVER_ACCESS_KEY = st.secrets["API_ACCESS_KEY"]
+        #SERVER_ACCESS_TOKEN = st.secrets["API_ACCESS_TOKEN"]
+        #MODEL_PATH = st.secrets["MODEL_PATH"]
+        #PRED_LOGS_FOLDER = st.secrets["PRED_LOGS_FOLDER"]
     else:
-        SERVER_URL = os.getenv("API_HOST", "")
-        SERVER_ACCESS_KEY = os.getenv("API_ACCESS_KEY", "")
-        SERVER_ACCESS_TOKEN = os.getenv("API_ACCESS_TOKEN")
-        MODEL_PATH = os.getenv("MODEL_PATH")
-        PRED_LOGS_FOLDER = os.getenv("PRED_LOGS_FOLDER")
+        SERVER_URL = os.getenv("SERVER_API_URL", "")
+        #SERVER_ACCESS_KEY = os.getenv("API_ACCESS_KEY", "")
+        #SERVER_ACCESS_TOKEN = os.getenv("API_ACCESS_TOKEN")
+        #MODEL_PATH = os.getenv("MODEL_PATH")
+        #PRED_LOGS_FOLDER = os.getenv("PRED_LOGS_FOLDER")
 except:
         logger.info("Using environment variables")
-        SERVER_URL = os.getenv("API_HOST", "")
-        SERVER_ACCESS_KEY = os.getenv("API_ACCESS_KEY", "")
-        SERVER_ACCESS_TOKEN = os.getenv("API_ACCESS_TOKEN")
-        MODEL_PATH = os.getenv("MODEL_PATH")
-        PRED_LOGS_FOLDER = os.getenv("PRED_LOGS_FOLDER")
+        SERVER_URL = os.getenv("SERVER_API_URL", "")
+        #SERVER_ACCESS_KEY = os.getenv("API_ACCESS_KEY", "")
+        #SERVER_ACCESS_TOKEN = os.getenv("API_ACCESS_TOKEN")
+        #MODEL_PATH = os.getenv("MODEL_PATH")
+        #PRED_LOGS_FOLDER = os.getenv("PRED_LOGS_FOLDER")
 
 
 
@@ -46,7 +46,6 @@ def ping_server():
         logger.error(f"Server ping failed: {e}")
         return "ko", e
 
-st.session_state["server_state"] = ping_server()  # default server state
 
 
 def load_image(image_path):

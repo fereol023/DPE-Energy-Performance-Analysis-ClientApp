@@ -2,6 +2,12 @@ from content import *
 from uuid import uuid4
 from typing import Union
 from datetime import datetime
+import os
+import io
+import logging
+import pandas as pd
+from datetime import datetime
+from minio import Minio
 
 
 @st.cache_data
@@ -157,11 +163,6 @@ def make_input_df(inputs: dict) -> pd.DataFrame:
     return input_model_df
 
 
-def generate_id():
-    """Generate a unique identifier for the prediction."""
-    return str(uuid4())
-
-
 def get_predictions_from_server(input_as_df, model_version="v1") -> list:
     try:
         res = make_get_request(f"model/{model_version}/config")
@@ -237,29 +238,60 @@ def format_prediction_result(res_df: pd.DataFrame) -> pd.DataFrame:
 
 def log_prediction_results(
         res: pd.DataFrame, 
-        folder = None, 
-        save_inputs = False) -> None:
+        folder: str = None, 
+        save_inputs: bool = False) -> None:
     """
-    Log prediction results to a file or database.
+    Log prediction results as JSON to MinIO S3.
     """
+    logger = logging.getLogger("VOLT-DPE-DATAVIZ-APP")
+
+    def generate_id() -> str:
+        """Generate a unique prediction ID."""
+        #return datetime.now().strftime("%Y%m%d%H%M%S%f")
+        return str(uuid4())
+
     if save_inputs:
+        try:
+            minio_client = Minio(
+                endpoint=os.getenv("S3_URL"), 
+                access_key=os.getenv("S3_ACCESS_KEY"),      
+                secret_key=os.getenv("S3_SECRET_KEY"),
+                secure=False                       
+            )
+        except Exception as e:
+            logger.critical(f"Could not connect to filestorage : {e}")
+
+        PRED_LOGS_BUCKET = os.getenv("S3_BUCKET_NAME")
         if folder is None:
-            folder = PRED_LOGS_FOLDER
+            folder = PRED_LOGS_BUCKET
 
         pred_id = generate_id()
-        filepath = os.path.join(folder, f"{pred_id}.json")
+        object_name = f"model/pred-logs/{pred_id}.json"
+
+        # JSON in memory
+        json_buffer = io.BytesIO()
         res.assign(
             id=res.index,
             prediction_id=pred_id,
             date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         ).to_json(
-            open(filepath, 'w'), 
-            orient='records',
-            date_format='iso', 
+            json_buffer, 
+            orient="records",
+            date_format="iso", 
             force_ascii=False, 
             indent=4
         )
-        logger.info(f"Results saved to {filepath}")
+        # Reset buffer pointer
+        json_buffer.seek(0)
+        # Upload to MinIO
+        minio_client.put_object(
+            bucket_name=PRED_LOGS_BUCKET,
+            object_name=object_name,
+            data=json_buffer,
+            length=len(json_buffer.getvalue()),
+            content_type="application/json"
+        )
+        logger.info(f"Results saved to MinIO at s3://{PRED_LOGS_BUCKET}/{object_name}")
 
 
 def main(obj_model, model_config, save_inputs=False):
