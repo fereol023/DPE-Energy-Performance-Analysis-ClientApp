@@ -1,47 +1,53 @@
-import httpx
+import requests
 import pandas as pd
-from PIL import Image 
 import streamlit as st
 import pickle, os, logging, uuid
 
-if st.secrets["ENV"] == "LOCAL":
-    SERVER_HOST = st.secrets["API_HOST"]
-    SERVER_ACCESS_KEY = st.secrets["API_ACCESS_KEY"]
-    SERVER_ACCESS_TOKEN = st.secrets["API_ACCESS_TOKEN"]
-    MODEL_PATH = st.secrets["MODEL_PATH"]
-    PRED_LOGS_FOLDER = st.secrets["PRED_LOGS_FOLDER"]
-else:
-    SERVER_HOST = os.getenv("API_HOST", "")
-    SERVER_ACCESS_KEY = os.getenv("API_ACCESS_KEY", "")
-    SERVER_ACCESS_TOKEN = os.getenv("API_ACCESS_TOKEN")
-    MODEL_PATH = os.getenv("MODEL_PATH")
-    PRED_LOGS_FOLDER = os.getenv("PRED_LOGS_FOLDER")
-
+from PIL import Image 
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("VOLT-DPE-DATAVIZ-APP")
+
+
+try:
+    if st.secrets["ENV"] == "LOCAL":
+        SERVER_URL = st.secrets["API_HOST"]
+        SERVER_ACCESS_KEY = st.secrets["API_ACCESS_KEY"]
+        SERVER_ACCESS_TOKEN = st.secrets["API_ACCESS_TOKEN"]
+        MODEL_PATH = st.secrets["MODEL_PATH"]
+        PRED_LOGS_FOLDER = st.secrets["PRED_LOGS_FOLDER"]
+    else:
+        SERVER_URL = os.getenv("API_HOST", "")
+        SERVER_ACCESS_KEY = os.getenv("API_ACCESS_KEY", "")
+        SERVER_ACCESS_TOKEN = os.getenv("API_ACCESS_TOKEN")
+        MODEL_PATH = os.getenv("MODEL_PATH")
+        PRED_LOGS_FOLDER = os.getenv("PRED_LOGS_FOLDER")
+except:
+        logger.info("Using environment variables")
+        SERVER_URL = os.getenv("API_HOST", "")
+        SERVER_ACCESS_KEY = os.getenv("API_ACCESS_KEY", "")
+        SERVER_ACCESS_TOKEN = os.getenv("API_ACCESS_TOKEN")
+        MODEL_PATH = os.getenv("MODEL_PATH")
+        PRED_LOGS_FOLDER = os.getenv("PRED_LOGS_FOLDER")
+
+
 
 def ping_server():
     try:
-        response = httpx.get(f"{SERVER_HOST}/", timeout=5)
+        response = requests.get(f"{SERVER_URL}/", timeout=5)
         if response.status_code == 200:
-            return "ok"
+            return "ok", response.json()
         else:
-            return "ko"
-    except httpx.RequestError as e:
+            return "ko", response.json()
+    except Exception as e:
         logger.error(f"Server ping failed: {e}")
-        return "ko"
+        return "ko", e
 
 st.session_state["server_state"] = ping_server()  # default server state
 
-make_req = lambda s: f"{SERVER_HOST}/{s}"
-make_route = make_req
-
-def make_route_with_token(s):
-    return f"{make_req(s)}?access_key={SERVER_ACCESS_KEY}&access_token={SERVER_ACCESS_TOKEN}"
 
 def load_image(image_path):
     """
@@ -59,3 +65,31 @@ def load_logo():
     """
     logo_path = "content/img/logo.ico"
     return load_image(logo_path) or "🤖"
+
+def make_get_request(route):
+    try:
+        access_token = st.session_state['access_token']
+    except:
+        access_token = ""
+    headers = {"Authorization": f"Bearer {access_token}"}
+    url = f"{SERVER_URL}/{route}"
+    logger.info(f"calling route : {url}")
+    try:
+        return requests.get(url, headers=headers)
+    except Exception as e:
+        s = f"😔 Smthg happened wrong for query : {url} : {e}"
+        logger.info(s)
+
+def make_post_request(route, payload):
+    try:
+        access_token = st.session_state['access_token']
+    except:
+        access_token = ""
+    headers = {"Authorization": f"Bearer {access_token}"}
+    url = f"{SERVER_URL}/{route}"
+    logger.info(f"calling route : {url}")
+    try:
+        return requests.post(url, headers=headers, json=payload)
+    except Exception as e:
+        s = f"😔 Smthg happened wrong for query : {url} : {e}"
+        logger.info(s)

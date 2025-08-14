@@ -1,59 +1,58 @@
+import authmodule
 from content import *
 import content.page3_batch as demo_batch
-import content.page3_single as demo_single
+import content.page3_single_v2 as demo_single
 
 
 class ModesDemo(enumerate):
-    single = "une prédiction"
-    multiple = "prédictions multiples"
+    single = "Estimation pour un seul logement"
+    multiple = "Estimations multiples (plus d'un logement)"
 
-@st.cache_resource # model, db connection, atg you cant store in db
-def load_model(default:bool, path=None, type=None):
-    try:
-        if default:
-            path, type = MODEL_PATH, "pkl"
-
-        if type=="pkl":
-            _ = pickle.load(open(path, 'rb'))
-            logger.info("Modele bien loadé !")
-            return _
-    except Exception as e:
-        logger.warning(f"Error loading model - {e}")
-        return
-
-@st.cache_data
+# @st.cache_data
 def load_model_config(version="v0"):
     try:
-        _ = make_req(f"model/{version}/config")
-        logger.info(f"Calling route : {_}")
-        model_config = httpx.get(_).json()
-        logger.info("Config du modèle bien loadé !")
+        res = make_get_request(f"model/{version}/config")
+        if res.status_code==200: 
+            model_config = res.json()
+            logger.info("Config du modèle bien loadé !")
+        else:
+            logger.critical("Erreur chargement config model")
+            model_config = {}
         return model_config
     except Exception as e:
         logger.warning(f"Error loading model - {e}")
         return
 
 def main(*args, **kwargs):
-    # model loading
-    obj_model, config_model = load_model(default=True), load_model_config()
+
+    serveur_state = st.session_state.get('server_state')
+    if serveur_state == 'ko':
+        st.error(f"Le serveur n'est pas démarré. Veuillez démarrer le serveur pour continuer. Details : {st.session_state["server_state_details"]}")
+        return
+
+    obj_model, config_model = None, load_model_config(version="v1")
+
+    _, c1, __ = st.columns([1, 1.5, 1])
+    mode_choosed = c1.segmented_control(
+        label="*Mode*",
+        options=["Estimation pour un seul logement", "Estimations multiples (plus d'un logement)"],
+        selection_mode="single",
+        default="Estimation pour un seul logement"
+    )
     # consentemment
-    not_consent = st.toggle(
+    not_consent = c1.toggle(
         "*Vous refusez la sauvegarde de vos données pour améliorer le modèle.*"
         )
 
-    _, c1, __ = st.columns([1, 3, 1])
-    mode_choosed = st.segmented_control(
-        label="*Mode*",
-        options=["une prédiction", "prédictions multiples"],
-        selection_mode="single",
-        default="une prédiction"
-    )
-
     if mode_choosed == ModesDemo.single:
-        c1.write("*With single mode - :orange[estimate savings on only one flat]*")
+        c1.write("*Avec ce mode- :orange[estimez vos économies pour un logement après changement de classe DPE]*")
         demo_single.main(obj_model, config_model, (not not_consent))
     else:
         c1.write("Not available")
         demo_batch.main()
-
     st.feedback("faces")
+
+    if authmodule.check_is_connected_as_admin(): 
+        st.markdown("#### Panel admin ⚙️")
+        if st.button("Show swagger"): 
+            st.markdown(make_get_request(f"/user-admin").json())
