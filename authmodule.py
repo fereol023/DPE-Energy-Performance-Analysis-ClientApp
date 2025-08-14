@@ -12,7 +12,7 @@ try:
         API_BASE_URL = os.getenv("SERVER_API_URL")
 except:
         logger.info("Using environment variables")
-        API_BASE_URL = os.getenv["SERVER_API_URL"]
+        API_BASE_URL = os.getenv("SERVER_API_URL")
 
 def check_is_connected():
     return 'access_token' in st.session_state 
