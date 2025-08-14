@@ -9,6 +9,21 @@ venv/
 env/
 .venv/
 
+# data
+data/
+**.streamlit/
+ressources/
+
+# analysis
+analysis/
+
+# DS_Store
+.DS_Store
+**/.DS_Store
+
+# C extensions
+*.so
+
 # Ignore les fichiers de logs
 *.log
 logs/

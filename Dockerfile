@@ -1,6 +1,11 @@
-FROM python:3.12
+FROM python:3.12-alpine
 
-ENV MPLCONFIGDIR=/app
+ENV MPLCONFIGDIR=/app \
+    SERVER_API_URL="" \
+    S3_URL="" \
+    S3_ACCESS_KEY="" \
+    S3_SECRET_KEY="" \
+    S3_BUCKET_NAME=""
 
 WORKDIR /app
 COPY requirements.txt .
@@ -8,4 +13,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 EXPOSE 8501
-CMD ["python", "-m", "streamlit", "run", "app.py", "--server.port=8501", "--server.host=0.0.0.0"]
+CMD ["python", "-m", "streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
