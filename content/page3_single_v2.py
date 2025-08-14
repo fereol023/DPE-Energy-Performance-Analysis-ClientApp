@@ -2,6 +2,12 @@ from content import *
 from uuid import uuid4
 from typing import Union
 from datetime import datetime
+import os
+import io
+import logging
+import pandas as pd
+from datetime import datetime
+from minio import Minio
 
 
 @st.cache_data
@@ -10,9 +16,7 @@ def get_kwh_price():
     Prix du kWh en euros.
     Source : api serveur 
     """
-    route = make_req("price_kwh")
-    logger.info(f"Calling route : {route}")
-    res = httpx.get(route)
+    res = make_get_request("price_kwh")
     if res.status_code == 200:
         return res.json()
     else:
@@ -27,9 +31,7 @@ def search_adress(inp_addr: str)->list:
     """
     Call API endpoint to get adresses closer to input adress.
     """
-    route = make_req(f"db/reader/adresses/searchadress/{inp_addr}")
-    logger.info(f"Calling route : {route}")
-    res = httpx.get(route)
+    res = make_get_request(f"db/reader/adresses/searchadress/{inp_addr}")
     if res.status_code == 200:
         data = res.json()
         if data.get('data'):
@@ -49,9 +51,7 @@ def search_avg_inputs_from_address(inp_addr: str)->dict:
     as default values in form - to prepare model input.
     # TODO: for now, just take one example from the database
     """
-    route = make_req(f"db/reader/logements/getbyadress/{inp_addr}")
-    logger.info(f"Calling route : {route}")
-    res = httpx.get(route)
+    res = make_get_request(f"db/reader/logements/getbyadress/{inp_addr}")
     if res.status_code == 200:
         data = res.json()
         if data.get('data'):
@@ -79,10 +79,9 @@ def get_dpe_conso_range(inp):
     return mapping.get(inp, 'NC')
 
 
-def get_dpe_label(dpe_value_idx):
+def get_dpe_label(dpe_value_idx: int):
     """
     Pour obtenir la liste des dpe restants. 
-    Prédire les économies réalisées en changeant de classe DPE
     """
     mapping = {1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F', 7: 'G'}
     return mapping.get(dpe_value_idx, "NC")
@@ -147,7 +146,6 @@ def make_form_from_config(model_features_config, example_inputs={}):
             index=feature_config['mapping'].get(example_inputs.get(feature, None), 0)
             )
         input_values[feature] = feature_config.get('mapping').get(v)
-
     # update inputs
     st.session_state['inputs'] = input_values
 
@@ -157,128 +155,155 @@ def make_input_df(inputs: dict) -> pd.DataFrame:
     Convert inputs dict to DataFrame.
     """
     inputs_model = []
-    for dpe in range(1, 8):
+    for dpe in range(1, 8): # iterates from 1 to 7 actually
         inputs['etiquette_dpe_ademe'] = dpe
         inputs_model.append(inputs.copy())
-    
     input_model_df = pd.DataFrame(inputs_model)
     input_model_df.sort_index(axis=1, inplace=True)
     return input_model_df
 
 
-def generate_id():
-    """
-    Generate a unique identifier for the prediction.
-    """
-    return str(uuid4())
+def get_predictions_from_server(input_as_df, model_version="v1") -> list:
+    try:
+        res = make_get_request(f"model/{model_version}/config")
+        model_required_cols = res.json()
+        input_as_df = input_as_df[model_required_cols.keys()]
+        payload = input_as_df.to_dict(orient="records")
+        res = make_post_request(f"model/{model_version}/predict", payload=payload) # true requires url to be https
+        logger.info("Prediction ok !")
+        #st.write(f'predictions : {res.status_code}')
+        #st.write(res.json())
+        return res.json().get('predictions', [])
+    except Exception as e:
+        logger.warning(f"Prediction ko - {e}")
+        return
 
 
-def format_prediction_result(res_df: pd.DataFrame) -> str:
-    """
-    Format the prediction result DataFrame.
-    """
+def format_prediction_result(res_df: pd.DataFrame) -> pd.DataFrame:
+    """Format the prediction result DataFrame."""
 
     def highlight_row(s):
-        input_dpe_value = st.session_state.get('inputs', {}).get('etiquette_dpe_ademe', 1)
-        if s['Etiquette DPE'] == get_dpe_label(input_dpe_value):
-            return ['background-color: #ffe082'] * len(s)
-        else:
-            return [''] * len(s)
+        input_dpe_value = st.session_state['input_dpe_as_int']
+        if input_dpe_value:
+            if s['Etiquette DPE'] == get_dpe_label(input_dpe_value):
+                return ['background-color: #2ECC71'] * len(s)
+            else:
+                return [''] * len(s)
 
     def format_euro(val):
         try:
             return f"{val:,.2f} €"
         except Exception:
-            return val
+            raise
 
     rev_dpe_enc = {1: "A", 2: "B", 3: "C", 4: "D", 5: "E", 6: "F", 7: "G"}
 
-    PRIX_KWH_EUROS = get_kwh_price().get("prix_kwh_base")
+    PRIX_KWH_EUROS = get_kwh_price().get("prix_kwh_base")    
     logger.info(f"Prix du kWh : {PRIX_KWH_EUROS} euros")
 
     res_df['Conso kwh/m2/an'] = round(res_df['conso_kwh_m2'], 3)
     res_df['Conso kwh/an'] = round(res_df['Conso kwh/m2/an'] * res_df['surface_habitable_logement_ademe'], 3)
     res_df['Etiquette DPE'] = res_df['etiquette_dpe_ademe'].apply(lambda r: rev_dpe_enc.get(r))
     res_df['Montant (euros/an)'] = round(res_df['Conso kwh/an'] * PRIX_KWH_EUROS, 2)
-    res_df['Economies (euros/an)'] = round(res_df['Montant (euros/an)'].shift(-1) - res_df['Montant (euros/an)'], 2)
+    res_df['Economies (euros/an) vs classe DPE précédente'] = round(res_df['Montant (euros/an)'].shift(-1) - res_df['Montant (euros/an)'], 2)
     res_df = res_df.sort_values(by=['Etiquette DPE'], ascending=False)
-    res_df['Economies cumulées (euros/an)'] = res_df['Economies (euros/an)'].cumsum()
+    res_df['Economies cumulées (euros/an)'] = res_df['Economies (euros/an) vs classe DPE précédente'].cumsum()
     res_df = res_df.sort_values(by=['Etiquette DPE'], ascending=True)
-
     res_cols = [
         "Etiquette DPE",
         "Conso kwh/m2/an",
         "Conso kwh/an",
         "Montant (euros/an)",
-        "Economies (euros/an)",
+        "Economies (euros/an) vs classe DPE précédente",
         "Economies cumulées (euros/an)"
     ]
     res_df = res_df[res_cols].rename(
         columns={
             "surface_habitable_logement_ademe": "Surface du logement",
             })
-
     styled_df = res_df.style.apply(highlight_row, axis=1)
     styled_df = styled_df.format({
-        "Economies (euros/an)": format_euro,
+        "Economies (euros/an) vs classe DPE précédente": format_euro,
         "Economies cumulées (euros/an)": format_euro,
         "Montant (euros/an)": format_euro,
         "Conso kwh/an": lambda v: f"{v:,.2f}",
         "Conso kwh/m2/an": lambda v: f"{v:,.2f}",
     })
-
     st.markdown("**Détails prédictions**")
     st.write("- *Montant euros/an = prix du kwh (euros/an) x consommation kwh/an*")
     st.write("- *Economie euros/an = Economie réalisée en changeant vers :orange[la classe DPE au dessus]*")
     st.write("- *Economie cumulée euros/an = Economie réalisée en changeant de :orange[plusieurs classes DPE] au dessus*")
-
-    # st.dataframe(
-    #     styled_df,
-    #     hide_index=True
-    # )
-
-    return res_df
+    return styled_df # res_df
 
 
 def log_prediction_results(
         res: pd.DataFrame, 
-        folder = None, 
-        save_inputs = False) -> None:
+        folder: str = None, 
+        save_inputs: bool = False) -> None:
     """
-    Log prediction results to a file or database.
+    Log prediction results as JSON to MinIO S3.
     """
+    logger = logging.getLogger("VOLT-DPE-DATAVIZ-APP")
+
+    def generate_id() -> str:
+        """Generate a unique prediction ID."""
+        #return datetime.now().strftime("%Y%m%d%H%M%S%f")
+        return str(uuid4())
+
     if save_inputs:
+        try:
+            minio_client = Minio(
+                endpoint=os.getenv("S3_URL"), 
+                access_key=os.getenv("S3_ACCESS_KEY"),      
+                secret_key=os.getenv("S3_SECRET_KEY"),
+                secure=False                       
+            )
+        except Exception as e:
+            logger.critical(f"Could not connect to filestorage : {e}")
+
+        PRED_LOGS_BUCKET = os.getenv("S3_BUCKET_NAME")
         if folder is None:
-            folder = PRED_LOGS_FOLDER
+            folder = PRED_LOGS_BUCKET
 
         pred_id = generate_id()
-        filepath = os.path.join(folder, f"{pred_id}.json")
+        object_name = f"model/pred-logs/{pred_id}.json"
+
+        # JSON in memory
+        json_buffer = io.BytesIO()
         res.assign(
             id=res.index,
             prediction_id=pred_id,
             date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         ).to_json(
-            open(filepath, 'w'), 
-            orient='records',
-            date_format='iso', 
+            json_buffer, 
+            orient="records",
+            date_format="iso", 
             force_ascii=False, 
             indent=4
         )
-        logger.info(f"Results saved to {filepath}")
+        # Reset buffer pointer
+        json_buffer.seek(0)
+        # Upload to MinIO
+        minio_client.put_object(
+            bucket_name=PRED_LOGS_BUCKET,
+            object_name=object_name,
+            data=json_buffer,
+            length=len(json_buffer.getvalue()),
+            content_type="application/json"
+        )
+        logger.info(f"Results saved to MinIO at s3://{PRED_LOGS_BUCKET}/{object_name}")
 
 
 def main(obj_model, model_config, save_inputs=False):
 
-    # _, c1, __ = st.columns([1, 2, 1])
     inp_addr = st.text_input(
-        "Input address",
-        # "rue lord byron cannes" 
+        "Recherchez votre addresse : *exple. rue lord byron cannes*",
         )
     if inp_addr:
         results = search_adress(inp_addr)
 
         st.write(
-            "Choose between the following best matches with your input"
+            "*Pour avoir les données automatiquement remplies, choisir dans cette liste le meilleur match avec votre saisie...*"
             )
         choosed_address = st.selectbox(
             "Choisir adresse..", 
@@ -288,25 +313,37 @@ def main(obj_model, model_config, save_inputs=False):
         st.session_state['inputs'] = search_avg_inputs_from_address(
             choosed_address.get('adresse', 'abcde') # fetch on non existing town
             )
-        # st.write(st.session_state['inputs'])
         # display form
         st.markdown("----------------")
         make_form_from_config(
             model_config, 
-            example_inputs=st.session_state.get('inputs', {})
+            example_inputs={}
             )
         st.markdown("----------------")
         
-        if st.button("Predict on this"):
-            inputs_as_df = st.session_state.get("inputs", False)
-            if not inputs_as_df:
+        if st.button("Estimez avec ces informations"):
+            inputs_dict_form = st.session_state.get("inputs", False)
+            st.session_state['input_dpe_as_int'] = inputs_dict_form.get('etiquette_dpe_ademe')
+            st.session_state['input_dpe_as_label'] = get_dpe_label(inputs_dict_form.get('etiquette_dpe_ademe'))
+            if not inputs_dict_form:
                 st.error("No inputs")
             else:
-                st.write("Running prediction")
-                inputs_as_df = make_input_df(inputs_as_df)
-                inputs_as_df['conso_kwh_m2'] = obj_model.predict(inputs_as_df)
-
+                inputs_as_df = make_input_df(inputs_dict_form)
+                # inputs_as_df['conso_kwh_m2'] = obj_model.predict(inputs_as_df)
+                inputs_as_df['conso_kwh_m2'] = get_predictions_from_server(inputs_as_df, model_version="v1")
+                output = format_prediction_result(inputs_as_df).data
                 log_prediction_results(inputs_as_df, save_inputs=save_inputs)
+                st.success(f"""
+                    **Résultats :**\n
+                    "➡️ Etiquette DPE" : ***{st.session_state['input_dpe_as_label']}***\n
+                    "📊 Consommation estimée sur la base du DPE (min-max)" : ***{get_dpe_conso_range(st.session_state['input_dpe_as_label'])}***\n
+                    "✅ Consommation kwh/an estimée": ***{round(output.query(f" `Etiquette DPE` == '{st.session_state['input_dpe_as_label']}' ")['Conso kwh/an'].iloc[0], 2)}***\n
+                    "✅ Consommation kwh/m2/an estimée": ***{round(output.query(f" `Etiquette DPE` == '{st.session_state['input_dpe_as_label']}' ")['Conso kwh/m2/an'].iloc[0], 2)}***,\n
+                    "💶 Consommation euros/an estimée": ***{round(output.query(f" `Etiquette DPE` == '{st.session_state['input_dpe_as_label']}' ")['Montant (euros/an)'].iloc[0], 3)}***,\n
+                    """)
+                st.markdown("ℹ️ Informations sur la tarification appliquée")
+                st.write(get_kwh_price())
+                st.write("")
                 st.dataframe(format_prediction_result(inputs_as_df), hide_index=True)
 
-        if st.button("Reset all"): st.session_state.clear()
+        if st.button("Log out - Reset all"): st.session_state.clear()
