@@ -173,6 +173,8 @@ def get_predictions_from_server(input_as_df, model_version="v1") -> list:
         logger.info("Prediction ok !")
         #st.write(f'predictions : {res.status_code}')
         #st.write(res.json())
+        l = logging.getLogger("VOLT-DPE-DATAVIZ-APP")
+        l.info(f"Prediction output : {res.json()}")
         return res.json().get('predictions', [])
     except Exception as e:
         logger.warning(f"Prediction ko - {e}")

@@ -52,7 +52,7 @@ selected_city = st.sidebar.selectbox("City", ["All"] + available_cities)
 selected_district = st.sidebar.selectbox("Arrondissement/District", ["All"] + available_districts)
 
 selected_year = st.sidebar.slider("Data Source Year (enedis)", min_value=2019, max_value=2023, value=(2022, 2023))
-construction_year = st.sidebar.slider("Building age Year", min_value=1940, max_value=2023, value=(1940, 1980))
+construction_year = st.sidebar.slider("Building age Year", min_value=1940, max_value=2023, value=(1940, 2023))
 
 if st.sidebar.button("Reset All"):
     selected_city = "All"
