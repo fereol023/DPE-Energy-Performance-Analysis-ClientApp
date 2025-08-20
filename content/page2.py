@@ -32,7 +32,7 @@ def get_data_adresse_table(city_name="All", arrondissement_name="All"):
 
 def main(*args, **kwargs):
     
-    st.markdown("#### Exploratory Data Analysis (EDA) and Key Performance Indicators (KPI)")
+    st.markdown("#### Analyse Exploratoire (EDA) et KPIs")
 
     serveur_state = st.session_state.get('server_state')
     if serveur_state == 'ko':
@@ -86,13 +86,16 @@ indicateurs clés de performance (KPI) liés aux diagnostics de performance éne
         france_center = {'latitude': 46, 'longitude': 1.8}  
         c01.map(pd.DataFrame([france_center]))
     
-    c02.markdown("#### Distributions des PDL Enedis exploitables")
+
+    c02.markdown("#### Distributions des logements exploitables")
     data_coord_adresse = data_coord_adresse\
         .drop(labels=['latitude', 'longitude'], axis=1)\
         .groupby('Ville')\
         .agg({'nombre_logements': 'sum'})\
         .reset_index()\
         .rename(columns={'nombre_logements': 'Nombre de logements trouvés'})
+    n = data_coord_adresse['Nombre de logements trouvés'].sum()
+    c02.metric("Nombre de logements total", f"{n:,.0f}".replace(",", " "), border=True)
     c02.dataframe(data_coord_adresse, use_container_width=True, hide_index=True)
 
     # ------- visualitisations des données -------

@@ -36,7 +36,7 @@ def request_otp(email, context, debug=False):
 def verify_otp(email, otp, context):
     response = requests.post(f"{API_BASE_URL}/login-with-otp", json={"email": email, "otp": otp})
     if response.status_code == 200:
-        context.success(f"Connexion réussie ! : {response.json()}")
+        context.success(f"Connexion réussie en tant que {response.json().get('role', '')} ! ")
         #  {'access_token': 'xxxxx', 'token_type': 'bearer', 'role': 'admin/reader'}
         # Ici tu peux stocker le cookie/token dans une session ou gérer la suite
         st.session_state['access_token'] = response.json().get('access_token')

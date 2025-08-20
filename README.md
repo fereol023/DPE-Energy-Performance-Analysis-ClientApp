@@ -33,13 +33,13 @@ Les informations de connexion avec un stockage type s3/minio distant ne sont pas
 - Utilisez la commande docker run. Si le reste de la stack est déployée en local la commande suivante devrait être suufisante sinon, définir avec les urls en remote. 
 
 ```bash
-docker run -it \
+docker run -it -d\
     -p 8501:8501 \
     -e SERVER_API_URL="http://host.docker.internal:<port>" \
     -e S3_URL="host.docker.internal:<port>" \
     -e S3_ACCESS_KEY="s3-access-key" \
     -e S3_SECRET_KEY="s3-secret-key" \
-    dpe-energy-performance-analysis-clientapp:<release_tag>
+    fereol023/dpe-energy-performance-analysis-clientapp:<release_tag>
 ```
 - Utilisez docker compose ([ici](docker-compose.yml)) en redéfinissant dans le docker-compose.yml les variables d'environnement.
 
