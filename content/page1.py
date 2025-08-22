@@ -55,6 +55,21 @@ sont responsables d'une part importante des émissions de GES.
     else:
         if authmodule.check_is_connected_as_admin(): 
             st.markdown("#### Panel admin ⚙️")
-        if st.button("Init DB"): 
-            st.markdown(make_get_request(f"/user-admin").json())
-            #st.markdown(make_get_request(f"/db").json())
+            if st.button("Init DB (placeholder)"):
+                st.success("calling route /user-admin")
+                st.markdown(make_get_request(f"/user-admin").json())
+                #st.markdown(make_get_request(f"/db").json())
+            if st.button("Connect to prefect UI"):
+                SERVER_URL = os.getenv("SERVER_API_URL", "")
+                if not SERVER_URL:
+                    st.error("Uh oh error")
+                else:
+                    url = f"{SERVER_URL}/prefect-server/dashboard"
+                    st.success(f"route : {url}")
+            if st.button("Deploy ETL flow"):
+                SERVER_URL = os.getenv("SERVER_API_URL", "")
+                if not SERVER_URL:
+                    st.error("Uh oh error")
+                else:
+                    url = f"{SERVER_URL}/etl/start-deployment"
+                    st.success(f"route: {url}")
