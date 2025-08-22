@@ -34,7 +34,18 @@ def get_cities_names():
             return []
     else:
         return []
-    
+
+def get_departments():
+    """Call API endpoint to get departments codes"""
+    r = get_cities_names_and_codes()
+    if r:
+        if r.get('data'):
+            return list(set([city['code_departement'] for city in r['data']]))
+        else:
+            return []
+    else:
+        return []
+
 # filters
 pages = {
     "Présentation": page1.main,
@@ -47,16 +58,16 @@ p = st.sidebar.radio('Aller à ', list(pages.keys()))
 st.sidebar.markdown("-------------------")
 st.sidebar.header("Filtres")
 available_cities = get_cities_names()
-available_districts = []  # TODO placeholder for districts/arrondissements
-selected_city = st.sidebar.selectbox("City", ["All"] + available_cities)
-selected_district = st.sidebar.selectbox("Arrondissement/District", ["All"] + available_districts)
+available_dept = get_departments()
+selected_city = st.sidebar.selectbox("Ville", ["All"] + available_cities)
+selected_dept = st.sidebar.selectbox("Département", ["All"] + available_dept)
 
 selected_year = st.sidebar.slider("Data Source Year (enedis)", min_value=2019, max_value=2023, value=(2022, 2023))
 construction_year = st.sidebar.slider("Building age Year", min_value=1940, max_value=2023, value=(1940, 2023))
 
 if st.sidebar.button("Reset All"):
     selected_city = "All"
-    selected_district = "All"
+    selected_dept= "All"
     selected_year = (2023, 2023)
     construction_year = (1940, 1980)
 
@@ -64,7 +75,7 @@ st.session_state["server_state"] = ping_server()[0]
 st.session_state["server_state_details"] = ping_server()[1]
 pages[p](
     selected_city = selected_city, 
-    selected_district = selected_district, 
+    selected_district = selected_dept, 
     selected_year = selected_year, # for data 
     construction_year = construction_year # building age filter
     )

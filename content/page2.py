@@ -3,8 +3,8 @@ from content import *
 import plotly.express as px
 from .utils import plot_categorical_with_dpe_hue_plotly, plot_quantitative_with_dpe_hue_plotly
 
-#@st.cache_data
-def get_data_logement_table(city_name="All", arrondissement_name="All", year_range=None):
+@st.cache_data
+def get_data_logement_table(city_name="All", selected_dept="All", year_range=None):
     """
     Call API endpoint to get all adresses by city and arrondissement.
     """
@@ -17,7 +17,7 @@ def get_data_logement_table(city_name="All", arrondissement_name="All", year_ran
     else:
         return {"data": [], "error": "Failed to fetch adresses"}
 
-def get_data_adresse_table(city_name="All", arrondissement_name="All"):
+def get_data_adresse_table(city_name="All", selected_dept="All"):
     """
     Call API endpoint to get all adresses by city and arrondissement.
     """
@@ -45,9 +45,9 @@ indicateurs clés de performance (KPI) liés aux diagnostics de performance éne
 
     # data retrieval
     selected_city = kwargs.get('selected_city', "All")
-    selected_arrondissement = kwargs.get('selected_arrondissement', "All")
+    selected_dept = kwargs.get('selected_dept', "All")
 
-    data_logement = pd.DataFrame(get_data_logement_table(selected_city, selected_arrondissement).get('data', []))
+    data_logement = pd.DataFrame(get_data_logement_table(selected_city, selected_dept).get('data', []))
     if not data_logement.empty:
         # check available columns for my plots
         required_columns = [
@@ -76,7 +76,7 @@ indicateurs clés de performance (KPI) liés aux diagnostics de performance éne
 
     c01, c02 = st.columns([2, 1])
     # ------ minimap using longitude and latitude --------
-    data_coord_adresse = pd.DataFrame(get_data_adresse_table(selected_city, selected_arrondissement)\
+    data_coord_adresse = pd.DataFrame(get_data_adresse_table(selected_city, selected_dept)\
         .get('data', [{'latitude': 46.603354, 'longitude': 1.888334}]))
     
     c01.markdown("#### Carte") 

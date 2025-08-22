@@ -230,12 +230,16 @@ def plot_categorical_with_dpe_hue_plotly(df, col_name, col_name_alias, col_map=N
         # Create a list of ordered categories from col_map that are present in the grouped_counts index
         ordered_categories = [k for k, v in sorted(col_map.items(), key=lambda item: item[1]) 
                             if k in grouped_counts.index]
+        ordered_categories = list(map(lambda m: f"{m[:10]}.", ordered_categories))
         grouped_counts = grouped_counts.reindex(ordered_categories)
     elif col_name in df.columns and df[col_name].dtype.name == 'category':
         ordered_categories = df[col_name].cat.categories
+        ordered_categories = list(map(lambda m: f"{m[:10]}.", ordered_categories))
         grouped_counts = grouped_counts.reindex(ordered_categories)
     else:
         grouped_counts = grouped_counts.sort_index()  # Default to sorting index
+        categs = list(map(lambda m: f"{m[:10]}" if len(m)>10 else m, list(grouped_counts.index)))
+        grouped_counts.reindex(categs)
     
     # Convert to percentages if stacked
     if stacked:
