@@ -3,7 +3,7 @@ from content import *
 import plotly.express as px
 from .utils import plot_categorical_with_dpe_hue_plotly, plot_quantitative_with_dpe_hue_plotly
 
-@st.cache_data
+@st.cache_data(ttl=60)
 def get_data_logement_table(city_name="All", selected_dept="All", year_range=None):
     """
     Call API endpoint to get all adresses by city and arrondissement.
