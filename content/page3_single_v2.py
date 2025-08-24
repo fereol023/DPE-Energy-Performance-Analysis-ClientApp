@@ -256,7 +256,9 @@ def log_prediction_results(
                 endpoint_url=os.getenv("S3_URL"), # optional for aws (needed if using MinIO-compatible S3)
                 aws_access_key_id=os.getenv("S3_ACCESS_KEY"),
                 aws_secret_access_key=os.getenv("S3_SECRET_KEY"),
+                region_name="eu-west-3"
             )
+            logger.info("Connected successfully to filestorage")
         except Exception as e:
             logger.critical(f"Could not connect to filestorage : {e}")
             return
@@ -290,7 +292,7 @@ def log_prediction_results(
             )
             logger.info(f"Results saved to S3 at s3://{PRED_LOGS_BUCKET}/{object_name}")
         except Exception as e:
-            logger.error(f"Failed to upload prediction results: {e}")
+            logger.error(f"Failed to upload prediction results at s3://{PRED_LOGS_BUCKET}/{object_name} : {e}")
 
 
 def main(obj_model, model_config, save_inputs=False):
