@@ -7,13 +7,13 @@ def main(config_model):
         "col1": ["a"], 
         "col2": ["b"]
     }
-    input_schema = {k:["placeholder_tmp"] for k in sorted(list(config_model))}
+    input_schema = {k:["default_value"] for k in sorted(list(config_model))}
     st.markdown("""
                 ##### To start, upload a csv file with consos
                 *Attention, des verifs sont faites sur l'input. Respecter le schema (exple).*
                 """)
-    
-    st.dataframe(pd.DataFrame(data=input_schema).T)
+
+    st.columns([1,2,1])[1].dataframe(pd.DataFrame(data=input_schema).T)
     os.makedirs("data/input_batch", exist_ok=True)
 
     uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])    

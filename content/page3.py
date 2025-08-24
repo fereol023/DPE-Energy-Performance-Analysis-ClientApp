@@ -16,7 +16,7 @@ def load_model_config(version="v0"):
             model_config = res.json()
             logger.info("Config du modèle bien loadé !")
         else:
-            logger.critical("Erreur chargement config model")
+            logger.critical(f"Erreur chargement config model : {res.json()}")
             model_config = {}
         return model_config
     except Exception as e:
@@ -49,7 +49,7 @@ def main(*args, **kwargs):
         demo_single.main(obj_model, config_model, (not not_consent))
     else:
         c1.write("Not available")
-        demo_batch.main()
+        demo_batch.main(config_model)
     st.feedback("faces")
 
     if authmodule.check_is_connected_as_admin(): 
