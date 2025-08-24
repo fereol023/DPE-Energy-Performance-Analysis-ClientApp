@@ -7,8 +7,7 @@ import io
 import logging
 import pandas as pd
 from datetime import datetime
-from minio import Minio
-
+import boto3
 
 @st.cache_data
 def get_kwh_price():
@@ -239,37 +238,33 @@ def format_prediction_result(res_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def log_prediction_results(
-        res: pd.DataFrame, 
-        folder: str = None, 
+        res: pd.DataFrame,
+        folder: str = None,
         save_inputs: bool = False) -> None:
     """
-    Log prediction results as JSON to MinIO S3.
+    Log prediction results as JSON to S3 (via boto3).
     """
     logger = logging.getLogger("VOLT-DPE-DATAVIZ-APP")
 
     def generate_id() -> str:
         """Generate a unique prediction ID."""
-        #return datetime.now().strftime("%Y%m%d%H%M%S%f")
         return str(uuid4())
-
     if save_inputs:
         try:
-            minio_client = Minio(
-                endpoint=os.getenv("S3_URL"), 
-                access_key=os.getenv("S3_ACCESS_KEY"),      
-                secret_key=os.getenv("S3_SECRET_KEY"),
-                secure=False                       
+            s3_client = boto3.client(
+                "s3",
+                endpoint_url=os.getenv("S3_URL"), # optional for aws (needed if using MinIO-compatible S3)
+                aws_access_key_id=os.getenv("S3_ACCESS_KEY"),
+                aws_secret_access_key=os.getenv("S3_SECRET_KEY"),
             )
         except Exception as e:
             logger.critical(f"Could not connect to filestorage : {e}")
-
+            return
         PRED_LOGS_BUCKET = os.getenv("S3_BUCKET_NAME")
         if folder is None:
             folder = PRED_LOGS_BUCKET
-
         pred_id = generate_id()
         object_name = f"model/pred-logs/{pred_id}.json"
-
         # JSON in memory
         json_buffer = io.BytesIO()
         res.assign(
@@ -277,23 +272,25 @@ def log_prediction_results(
             prediction_id=pred_id,
             date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         ).to_json(
-            json_buffer, 
+            json_buffer,
             orient="records",
-            date_format="iso", 
-            force_ascii=False, 
+            date_format="iso",
+            force_ascii=False,
             indent=4
         )
         # Reset buffer pointer
         json_buffer.seek(0)
-        # Upload to MinIO
-        minio_client.put_object(
-            bucket_name=PRED_LOGS_BUCKET,
-            object_name=object_name,
-            data=json_buffer,
-            length=len(json_buffer.getvalue()),
-            content_type="application/json"
-        )
-        logger.info(f"Results saved to MinIO at s3://{PRED_LOGS_BUCKET}/{object_name}")
+        try:
+            # Upload with boto3
+            s3_client.upload_fileobj(
+                Fileobj=json_buffer,
+                Bucket=PRED_LOGS_BUCKET,
+                Key=object_name,
+                ExtraArgs={"ContentType": "application/json"}
+            )
+            logger.info(f"Results saved to S3 at s3://{PRED_LOGS_BUCKET}/{object_name}")
+        except Exception as e:
+            logger.error(f"Failed to upload prediction results: {e}")
 
 
 def main(obj_model, model_config, save_inputs=False):

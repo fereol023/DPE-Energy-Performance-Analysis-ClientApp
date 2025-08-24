@@ -1,13 +1,13 @@
 from content import *
 
 
-def main():
+def main(config_model):
 
     input_schema = {
         "col1": ["a"], 
         "col2": ["b"]
     }
-
+    input_schema = {k:["placeholder_tmp"] for k in sorted(list(config_model))}
     st.markdown("""
                 ##### To start, upload a csv file with consos
                 *Attention, des verifs sont faites sur l'input. Respecter le schema (exple).*
