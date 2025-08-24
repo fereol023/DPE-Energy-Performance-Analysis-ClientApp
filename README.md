@@ -2,6 +2,7 @@
 
 Outil de datavisualisation pour le projet DPE-Energy-Performance-Analysis. Encapsule le dashboard analytique et le model.
 
+[![.github/workflows/github-cd.yml](https://github.com/fereol023/DPE-Energy-Performance-Analysis-ClientApp/actions/workflows/github-cd.yml/badge.svg?branch=main)](https://github.com/fereol023/DPE-Energy-Performance-Analysis-ClientApp/actions/workflows/github-cd.yml) [![.github/workflows/github-ci.yml](https://github.com/fereol023/DPE-Energy-Performance-Analysis-ClientApp/actions/workflows/github-ci.yml/badge.svg?branch=main)](https://github.com/fereol023/DPE-Energy-Performance-Analysis-ClientApp/actions/workflows/github-ci.yml)
 
 ### ✅ Pré-requis
 
@@ -14,7 +15,7 @@ Outil de datavisualisation pour le projet DPE-Energy-Performance-Analysis. Encap
 
 ```bash
 SERVER_API_URL = "http://host:port"
-S3_URL = "host:port" 
+S3_URL = "http://host:port" # optionel si le s3 utilisé est sur aws
 S3_ACCESS_KEY = "XXXXXXXX"
 S3_SECRET_KEY = "XXXXXXXX"
 S3_BUCKET_NAME = "dpe-storage-v1"
