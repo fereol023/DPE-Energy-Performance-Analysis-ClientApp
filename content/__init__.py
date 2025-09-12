@@ -65,7 +65,7 @@ def load_logo():
     logo_path = "content/img/logo.ico"
     return load_image(logo_path) or "🤖"
 
-def make_get_request(route):
+def make_get_request_legacy(route, params=None):
     try:
         access_token = st.session_state['access_token']
     except:
@@ -75,6 +75,20 @@ def make_get_request(route):
     logger.info(f"calling route : {url}")
     try:
         return requests.get(url, headers=headers)
+    except Exception as e:
+        s = f"😔 Smthg happened wrong for query : {url} : {e}"
+        logger.info(s)
+
+def make_get_request(route, params=None):
+    try:
+        access_token = st.session_state['access_token']
+    except:
+        access_token = ""
+    headers = {"Authorization": f"Bearer {access_token}"}
+    url = f"{SERVER_URL}/{route}"
+    logger.info(f"calling route : {url}")
+    try:
+        return requests.get(url, headers=headers, params=params)
     except Exception as e:
         s = f"😔 Smthg happened wrong for query : {url} : {e}"
         logger.info(s)

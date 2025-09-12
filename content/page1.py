@@ -5,6 +5,8 @@ from content import *
 def main(*args, **kwargs):
     
     serveur_state = st.session_state.get('server_state')
+    logger = logging.getLogger("VOLT-DPE-DATAVIZ-APP")
+
     if serveur_state == 'ko':
         st.error(f"Le serveur n'est pas démarré. Veuillez démarrer le serveur pour continuer. Details : {st.session_state["server_state_details"]}")
         return
@@ -51,25 +53,62 @@ sont responsables d'une part importante des émissions de GES.
 """)
 
     if not authmodule.check_is_connected():
-        authmodule.make_connexion_page()
+       authmodule.make_connexion_page()
     else:
-        if authmodule.check_is_connected_as_admin(): 
-            st.markdown("#### Panel admin ⚙️")
-            if st.button("Init DB (placeholder)"):
-                st.success("calling route /user-admin")
-                st.markdown(make_get_request(f"/user-admin").json())
+       if authmodule.check_is_connected_as_admin(): 
+            st.markdown("---")
+            st.markdown("#### ⚙️ Panel admin")
+            SERVER_URL = os.getenv("SERVER_API_URL", "")
+
+            a, b = st.columns([1,2])
+
+            if a.button("⚡️ Init DB (placeholder)"):
+                a.success("calling route /user-admin")
+                a.markdown(make_get_request(f"/user-admin").json())
                 #st.markdown(make_get_request(f"/db").json())
-            if st.button("Connect to prefect UI"):
-                SERVER_URL = os.getenv("SERVER_API_URL", "")
+
+            if a.button("📊 Connect to prefect UI"):
                 if not SERVER_URL:
-                    st.error("Uh oh error")
+                    a.error("Uh oh error")
                 else:
                     url = f"{SERVER_URL}/prefect-server/dashboard"
-                    st.success(f"route : {url}")
-            if st.button("Deploy ETL flow"):
-                SERVER_URL = os.getenv("SERVER_API_URL", "")
+                    a.success(f"Use this url : {url}")
+
+            if a.button("⌛️ Start ETL deployment"):
                 if not SERVER_URL:
-                    st.error("Uh oh error")
+                    a.error("Uh oh error")
                 else:
                     url = f"{SERVER_URL}/etl/start-deployment"
-                    st.success(f"route: {url}")
+                    a.success(f"Route: {url}")
+
+            if a.button("📊 Connect to grafana UI"):
+                if not SERVER_URL:
+                    a.error("Uh oh error")
+                else:
+                    url = f"{SERVER_URL}:3000/"
+                    a.success(f"Use this url : {url}")
+                    
+            a.markdown("#### 🙋‍♂️ Micro services states report")
+            if not SERVER_URL:
+                a.error("Uh oh error")
+            else:
+                res = make_get_request(f"/ping-all-services")
+                if res.status_code != 200:
+                    a.error(f"Error : {res.json()}")
+                else:
+                    a.success(f"{res.json()}")
+
+            b.markdown("#### 📬 Mail users")
+            if not SERVER_URL:
+                b.error("Uh oh error")
+            else:
+                input_text_mail_content = b.text_area("Content", value="Bonjour, ceci est un mail pour vous informer qu'une opération de maintance est planifiée pour le 30/09/2025 entre 15 et 17h. De ce fait, certains services seront indisponibles sur cette plage. Vous pouvez vous désinscrire de cette mailing list à tout moment.")
+                if b.button("Send this mail to all users"):
+                    try:
+                        res = make_get_request(f"/mailing-users", params={"mail_content": input_text_mail_content})
+                        if res.status_code != 200:
+                            b.error(f"Error : {res.json()}")
+                        else:
+                            b.success(f"Mail sent : {res.json()}")
+                    except Exception as ex:
+                        b.error(f"Error : {ex}")

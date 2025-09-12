@@ -21,14 +21,14 @@ def load_model_config(version="v0"):
         return model_config
     except Exception as e:
         logger.warning(f"Error loading model - {e}")
-        return
+        return {}
 
 def main(*args, **kwargs):
 
     serveur_state = st.session_state.get('server_state')
     if serveur_state == 'ko':
         st.error(f"Le serveur n'est pas démarré. Veuillez démarrer le serveur pour continuer. Details : {st.session_state["server_state_details"]}")
-        return
+        # return
 
     obj_model, config_model = None, load_model_config(version="v1")
 
@@ -43,7 +43,20 @@ def main(*args, **kwargs):
     not_consent = c1.toggle(
         "*Vous refusez la sauvegarde de vos données pour améliorer le modèle.*"
         )
+    if st.toggle("Voir les métadonnées du modèle"):
+        st.markdown("---")
+        st.markdown(f"""
+                    👉 **Nom du modèle :** *{config_model.get("model_name", "rf-proxy2-oise-60-v1-202507")}*\n
+                    👉 **Version :** *{config_model.get("model_version", "v1")}*\n
+                    👉 **Type de modèle :** *{config_model.get("model_type", "RandomForestRegressor")}*\n
+                    👉 **Description :** *Modèle de régression pour estimer la consommation électrique annuelle (kwh) d'un logement en fonction de ses caractéristiques et du DPE.*\n
+                    👉 **Données entrainement :** *Enedis Ademe 2023 extrait en Juillet 2025 (département 60 - Oise).*\n
+                    👉 **Méthode de calcul matrice de gains** : *Pour un même set de caractéristiques, on calcule la différence de consommation entre la classe DPE actuelle et la classe DPE visée. On multiplie cette différence par le prix du kWh pour obtenir le gain annuel en euros.*\n
+                    👉 **Configuration brute :** {config_model}
+                    """)
+        st.markdown("---")
 
+    st.sidebar.selectbox("Modèle de prédiction", ["rf-proxy2-oise-60-v1-202507"], index=0, key="model_name")
     if mode_choosed == ModesDemo.single:
         c1.write("*Avec ce mode- :orange[estimez vos économies pour un logement après changement de classe DPE]*")
         demo_single.main(obj_model, config_model, (not not_consent))
@@ -51,8 +64,3 @@ def main(*args, **kwargs):
         c1.write("Not available")
         demo_batch.main(config_model)
     st.feedback("faces")
-
-    if authmodule.check_is_connected_as_admin(): 
-        st.markdown("#### Panel admin ⚙️")
-        if st.button("Show swagger"): 
-            st.markdown(make_get_request(f"/user-admin").json())
