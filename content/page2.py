@@ -22,13 +22,68 @@ def get_data_adresse_table(city_name="All", selected_dept="All"):
     Call API endpoint to get all adresses by city and arrondissement.
     """
     if city_name == "All":
-        res = make_get_request("db/reader/adresses/all/allcoords")
+        route = "db/reader/adresses/all/coords"
     else:
-        res = make_get_request(f"db/reader/adresses/{city_name}/allcoords")
+        route = f"db/reader/adresses/{city_name}/coords"
+    res = make_get_request(route)
     if res.status_code == 200:
-        return res.json()
+        res_content = res.json()
     else:
-        return {"data": [], "error": "Failed to fetch adresses"}
+        res_content = {"data": [], "error": "Failed to fetch adresses", "details": res.json(), "status_code": res.status_code}
+    if ('data' not in res_content) or (len(res_content['data'])) == 0:
+        logger.critical(f"No data found for city {city_name} and dept {selected_dept} while calling route : {route}")
+        logger.critical(f"Response details : {res_content.get('details', '')} : status_code : {res_content.get('status_code', '')}")
+    return res_content
+
+@st.cache_data(ttl=60)
+def show_statistical_tests_from(df: pd.DataFrame):
+    required_columns = [
+        'conso_kwh_m2',
+        'conso_5_usages_par_m2_ef_ademe',
+        'etiquette_dpe_ademe'
+    ]
+    if not all(col in df.columns for col in required_columns):
+        missing_cols = set(required_columns) - set(df.columns)
+        logger.error(f"Missing required columns for statistical tests: {missing_cols}")
+        return pd.DataFrame()
+    
+    from scipy.stats import ttest_rel, wilcoxon
+    dpe_label_map = {1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F', 7: 'G'}
+    dpe_groups = df.groupby('etiquette_dpe_ademe')
+    results_list = []
+    for dpe_label, group_data in dpe_groups:
+        cleaned_group_data = group_data.dropna(subset=['conso_kwh_m2', 'conso_5_usages_par_m2_ef_ademe'])
+        n_samples = len(cleaned_group_data)
+        result_row = {'Etiquette DPE ADEME': dpe_label, 'Sample Size': n_samples}
+        if n_samples > 1: 
+            t_stat, p_ttest = ttest_rel(cleaned_group_data['conso_kwh_m2'], cleaned_group_data['conso_5_usages_par_m2_ef_ademe'])
+            result_row['Paired t-test t-statistic'] = round(t_stat, 3)
+            result_row['Paired t-test p-value'] = round(p_ttest, 3)
+            try:
+                wilcoxon_stat, p_wilcoxon = wilcoxon(cleaned_group_data['conso_kwh_m2'], cleaned_group_data['conso_5_usages_par_m2_ef_ademe'])
+                result_row['Wilcoxon statistic'] = round(wilcoxon_stat, 3)
+                result_row['Wilcoxon p-value'] = round(p_wilcoxon, 3)
+            except ValueError as e:
+                result_row['Wilcoxon statistic'] = None
+                result_row['Wilcoxon p-value'] = f"Could not perform: {e}"
+        else:
+            result_row['Paired t-test t-statistic'] = None
+            result_row['Paired t-test p-value'] = "Not enough data"
+            result_row['Wilcoxon statistic'] = None
+            result_row['Wilcoxon p-value'] = "Not enough data"
+        results_list.append(result_row)
+
+    # resultats
+    results_df = pd.DataFrame(results_list)
+    results_df['Etiquette DPE ADEME'] = results_df['Etiquette DPE ADEME']#.map(dpe_label_map)
+    st.success(f"""
+        Tests statistiques d'égalité des distributions entre consommation réelle et consommation estimée par le DPE, par étiquette DPE ADEME.
+        - Hypothèses nulles H0 : les deux distributions sont égales.
+        - Tests réalisés : test t apparié (paramétrique) et test de Wilcoxon (non paramétrique).
+        - Une p-value < 0.05 indique un rejet de H0 au seuil 5%, suggérant que les distributions diffèrent significativement.
+    """)
+    st.dataframe(results_df, hide_index=True)
+
 
 def main(*args, **kwargs):
     
@@ -76,18 +131,23 @@ indicateurs clés de performance (KPI) liés aux diagnostics de performance éne
 
     c01, c02 = st.columns([2, 1])
     # ------ minimap using longitude and latitude --------
-    data_coord_adresse = pd.DataFrame(get_data_adresse_table(selected_city, selected_dept)\
-        .get('data', [{'latitude': 46.603354, 'longitude': 1.888334}]))
+    data_coord_adresse = get_data_adresse_table(selected_city, selected_dept)
+    data_coord_adresse = pd.DataFrame(data_coord_adresse.get('data', [{'latitude': 46.603354, 'longitude': 1.888334}]))
     
     c01.markdown("#### Carte") 
     if not data_coord_adresse.empty:
         c01.map(data_coord_adresse[['latitude', 'longitude']].rename(columns={'latitude': 'lat', 'longitude': 'lon'}))
     else: # else center map on France with a default zoom to see full country
+        logger.warning("Aucune donnée de coordonnées disponibles pour la carte. Centrage sur la France.")
         france_center = {'latitude': 46, 'longitude': 1.8}  
         c01.map(pd.DataFrame([france_center]))
     
 
     c02.markdown("#### Distributions des logements exploitables")
+    required_columns = ['Ville', 'nombre_logements', 'latitude', 'longitude']
+    if not all(col in data_coord_adresse.columns for col in required_columns):
+        c02.error(f"Les variables requises pour cette section ne sont pas toutes présentes dans les données : manquantes : {set(required_columns) - set(data_coord_adresse.columns)}")
+        return
     data_coord_adresse = data_coord_adresse\
         .drop(labels=['latitude', 'longitude'], axis=1)\
         .groupby('Ville')\
@@ -205,6 +265,11 @@ indicateurs clés de performance (KPI) liés aux diagnostics de performance éne
     )
     c12.plotly_chart(fig)
 
+    ## tests statistiques DPE
+    st.markdown("----")
+    st.markdown("### Tests statistiques")
+    show_statistical_tests_from(data_logement)
+
     st.markdown("----")
     # --- bivariate add hue (color) by DPE label ----
     other_variables_map = {
@@ -225,7 +290,7 @@ indicateurs clés de performance (KPI) liés aux diagnostics de performance éne
     # add_hue = _c12.toggle("Pour les graphiques suivants, ajouter une couleur par etiquette DPE (hue)", value=False)
     
     c11, c12 = st.columns([1, 1])
-    stacked_graph_1 = c11.toggle("Stack graph 1", value=False)
+    stacked_graph_1 = c11.toggle("Empiler graphe 1", value=False)
     fig = plot_categorical_with_dpe_hue_plotly(
         df=data_logement,
         col_name=other_variables_map.get(other_col_to_plot_alias_1),
@@ -237,7 +302,7 @@ indicateurs clés de performance (KPI) liés aux diagnostics de performance éne
         width=1000,
     )
     c11.plotly_chart(fig)
-    stacked_graph_2 = c12.toggle("Stack graph 2", value=False)
+    stacked_graph_2 = c12.toggle("Empiler graphe 2", value=False)
     fig = plot_categorical_with_dpe_hue_plotly(
         df=data_logement,
         col_name=other_variables_map.get(other_col_to_plot_alias_2),
@@ -250,7 +315,8 @@ indicateurs clés de performance (KPI) liés aux diagnostics de performance éne
     )
     c12.plotly_chart(fig)
 
-## visu
+
+    ## visu
     if st.toggle("Afficher les données", value=False):
         st.dataframe(data_logement.head(), use_container_width=True)
         st.dataframe(data_coord_adresse.head(), use_container_width=True)

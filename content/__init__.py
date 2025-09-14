@@ -6,7 +6,7 @@ import pickle, os, logging, uuid
 from PIL import Image 
 
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format='%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(funcName)s - %(lineno)d - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger("VOLT-DPE-DATAVIZ-APP")
@@ -90,7 +90,7 @@ def make_get_request(route, params=None):
     try:
         return requests.get(url, headers=headers, params=params)
     except Exception as e:
-        s = f"😔 Smthg happened wrong for query : {url} : {e}"
+        s = f"😔 Smthg happened wrong while querying : {url} : {e}"
         logger.info(s)
 
 def make_post_request(route, payload):

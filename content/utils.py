@@ -82,7 +82,7 @@ def plot_quantitative_with_dpe_hue_plotly(df, col_name, col_name_alias, hue_col_
                 color=hue_col,
                 color_discrete_map=dpe_color_map,
                 category_orders={hue_col: dpe_order},
-                title=f'Box Plot of {col_name_alias}' + (f' by {hue_col_alias}' if hue_col else ''),
+                title=f'Boxplot - {col_name_alias}' + (f' by {hue_col_alias}' if hue_col else ''),
                 labels={col_name: col_name, hue_col: hue_col.replace('_', ' ').title()} if hue_col else {col_name: col_name},
                 height=height,
                 width=width
@@ -91,7 +91,7 @@ def plot_quantitative_with_dpe_hue_plotly(df, col_name, col_name_alias, hue_col_
             fig = px.box(
                 df_clean,
                 y=col_name,
-                title=f'Box Plot of {col_name_alias}',
+                title=f'Boxplot - {col_name_alias}',
                 labels={col_name: col_name},
                 height=height,
                 width=width
@@ -278,11 +278,11 @@ def plot_categorical_with_dpe_hue_plotly(df, col_name, col_name_alias, col_map=N
         category_orders={
             'etiquette_dpe_ademe': ['A', 'B', 'C', 'D', 'E', 'F', 'G']
         },
-        title=f'Distribution of {col_name_alias} by Etiquette DPE ADEME ({"Stacked %" if stacked else "Stacked Count"})',
+        title=f'Distribution - {col_name_alias} par étiquette énergie ({"empilé %" if stacked else "freq"})',
         labels={
             col_name: col_name_alias,
             'value': y_title,
-            'etiquette_dpe_ademe': 'Etiquette DPE ADEME'
+            'etiquette_dpe_ademe': 'Etiquette énergie'
         },
         height=height,
         width=width
