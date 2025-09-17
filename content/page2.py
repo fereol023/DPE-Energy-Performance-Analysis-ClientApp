@@ -22,9 +22,9 @@ def get_data_adresse_table(city_name="All", selected_dept="All"):
     Call API endpoint to get all adresses by city and arrondissement.
     """
     if city_name == "All":
-        route = "db/reader/adresses/all/coords"
+        route = "db/reader/adresses/all/allcoords"
     else:
-        route = f"db/reader/adresses/{city_name}/coords"
+        route = f"db/reader/adresses/{city_name}/allcoords"
     res = make_get_request(route)
     if res.status_code == 200:
         res_content = res.json()
